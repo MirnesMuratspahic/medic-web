@@ -100,7 +100,7 @@ function Login() {
   
           localStorage.setItem('authToken', token);
   
-          navigate('/dashboard');
+          navigate('/Pages/HomePage');
         } else {
           const errorText = await response.text();
           setError(errorText);
