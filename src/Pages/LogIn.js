@@ -113,7 +113,7 @@ function Login() {
     return (
       <LoginWrapper>
         <ContentBox>
-          <h1>Login Page</h1>
+          <h1>Log In</h1>
           {error && <ErrorMessage>{error}</ErrorMessage>}
           <Input
             type="text"

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled, { createGlobalStyle, keyframes } from 'styled-components';
 
 const GlobalStyle = createGlobalStyle`
@@ -99,6 +100,21 @@ const AddButton = styled.button`
   }
 `;
 
+const LogoutButton = styled.button`
+  background-color: red;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+
+  &:hover {
+    background-color: darkred;
+  }
+`;
+
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -151,22 +167,6 @@ const UserDetails = styled.div`
   width: 100%;
 `;
 
-const UserDetailModal = styled.p`
-  margin: 5px 0;
-  font-size: 1.2em;
-  color: #555;
-
-  span {
-    color: black;
-  }
-
-  .value {
-    color: #90EE90;
-  }
-`;
-
-
-
 const Label = styled.label`
   margin-top: 10px;
   font-weight: bold;
@@ -174,12 +174,19 @@ const Label = styled.label`
 `;
 
 const Input = styled.input`
-
   margin-right: 50px;
   padding: 10px;
   border: 1px solid #ccc;
   border-radius: 5px;
   width: 95%; 
+`;
+
+const Select = styled.select`
+  margin-right: 50px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  width: 95%;
 `;
 
 const ModalButton = styled.button`
@@ -210,6 +217,18 @@ function Home() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newUser, setNewUser] = useState({
+    username: '',
+    password: '',
+    name: '',
+    orders: 1,
+    imageUrl: '',
+    dateOfBirth: '',
+    role: 'Employee'
+  });
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -229,7 +248,7 @@ function Home() {
           setUsers(data);
         } else {
           const errorText = await response.text();
-          setError(`Failed to fetch user data: ${errorText}`);
+          alert(errorText);
         }
       } catch (error) {
         console.error('There was a problem with the fetch operation:', error);
@@ -259,7 +278,7 @@ function Home() {
         setSelectedUser(data);
       } else {
         const errorText = await response.text();
-        setError(`Failed to fetch user details: ${errorText}`);
+        alert(errorText);
       }
     } catch (error) {
       console.error('There was a problem with the fetch operation:', error);
@@ -281,10 +300,19 @@ function Home() {
   };
 
   const handleSave = async () => {
+    if (!selectedUser.username || !selectedUser.name || !selectedUser.dateOfBirth || !selectedUser.imageUrl) {
+      alert('All fields must be filled out.');
+      return;
+    }
+    else if (selectedUser.username.length < 5) {
+      alert('Username must be longer than 5 characters.');
+      return;
+    }
+  
     const token = localStorage.getItem('authToken');
     
     try {
-      const response = await fetch(`https://localhost:7265/users/${selectedUser.id}`, {
+      const response = await fetch(`https://localhost:7265/users/update/${selectedUser.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -292,12 +320,10 @@ function Home() {
         },
         body: JSON.stringify(selectedUser),
       });
-
+  
       if (response.ok) {
         alert('User details updated successfully');
         setSelectedUser(null);
-        // Optionally refetch users
-        // fetchUsers();
       } else {
         const errorText = await response.text();
         setError(`Failed to update user details: ${errorText}`);
@@ -308,12 +334,75 @@ function Home() {
     }
   };
 
+  const openAddModal = () => setIsAddModalOpen(true);
+  const closeAddModal = () => setIsAddModalOpen(false);
+
+  const handleNewUserChange = (e) => {
+    const { name, value } = e.target;
+    setNewUser(prevState => ({ ...prevState, [name]: value }));
+  };
+
+  const handleAddUser = async () => {
+    if (!newUser.username || !newUser.password || !newUser.name || !newUser.dateOfBirth || !newUser.imageUrl) {
+      alert('All fields must be filled out.');
+      return;
+    }
+    else if (newUser.username.length < 5 || newUser.password.length < 5) {
+      alert('Username and password must be longer than 5 characters.');
+      return;
+    }
+  
+    const token = localStorage.getItem('authToken');
+    
+    try {
+      const response = await fetch('https://localhost:7265/users/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(newUser),
+      });
+  
+      if (response.ok) {
+        alert('User added successfully');
+        closeAddModal();
+        setNewUser({
+          username: '',
+          password: '',
+          name: '',
+          orders: 1,
+          imageUrl: '',
+          dateOfBirth: '',
+          role: 'Employee'
+        });
+        // Refetch the users
+        const data = await response.json();
+        setUsers(prevUsers => [...prevUsers, data]);
+      } else {
+        const errorText = await response.text();
+        setError(`Failed to add user: ${errorText}`);
+      }
+    } catch (error) {
+      console.error('There was a problem with the fetch operation:', error);
+      setError(`There was a problem with the fetch operation: ${error.message}`);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('authToken');
+    navigate('/Pages/LogIn');
+  };
+
   return (
     <>
       <GlobalStyle /> 
       <Header>
         <h1>Users</h1>
-        <AddButton>Add</AddButton>
+        <div>
+          <AddButton onClick={openAddModal}>Add</AddButton>
+          <LogoutButton onClick={handleLogout}>Logout</LogoutButton>
+        </div>
       </Header>
       {loading ? (
         <p>Loading...</p>
@@ -344,13 +433,48 @@ function Home() {
                 <Input name="username" value={selectedUser.username || ''} onChange={handleInputChange} />
                 <Label>Name:</Label>
                 <Input name="name" value={selectedUser.name || ''} onChange={handleInputChange} />
-                <Label>Date of Birth:</Label>
+                <Label>Date of Birth: {formatDate(selectedUser.dateOfBirth)}</Label>
                 <Input name="dateOfBirth" type="date" value={selectedUser.dateOfBirth ? formatDate(selectedUser.dateOfBirth) : ''} onChange={handleInputChange} />
                 <Label>Status:</Label>
                 <Input name="status" value={selectedUser.status || ''} onChange={handleInputChange}  readOnly />
+                <Label>Image url:</Label>
+                <Input name="imageUrl" value={selectedUser.imageUrl || ''} onChange={handleInputChange}   />
                 <Label>Last Login:</Label>
                 <Input name="lastLoginDate" type="date" value={selectedUser.lastLoginDate ? formatDate(selectedUser.lastLoginDate) : ''} onChange={handleInputChange}  readOnly/>
                 <ModalButton onClick={handleSave}>Save Changes</ModalButton>
+              </div>
+            </UserDetails>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+      {isAddModalOpen && (
+        <ModalOverlay>
+          <ModalContent>
+            <CloseButton onClick={closeAddModal}>&times;</CloseButton>
+            <UserDetails>
+              <div>
+                <Label>Username:</Label>
+                <Input name="username" value={newUser.username} onChange={handleNewUserChange} />
+                <Label>Password:</Label>
+                <Input name="password" type="password" value={newUser.password} onChange={handleNewUserChange} />
+                <Label>Name:</Label>
+                <Input name="name" value={newUser.name} onChange={handleNewUserChange} />
+                <Label>Orders:</Label>
+                <Select name="orders" value={newUser.orders} onChange={handleNewUserChange}>
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map(num => (
+                    <option key={num} value={num}>{num}</option>
+                  ))}
+                </Select>
+                <Label>Image URL:</Label>
+                <Input name="imageUrl" value={newUser.imageUrl} onChange={handleNewUserChange} />
+                <Label>Date of Birth:</Label>
+                <Input name="dateOfBirth" type="date" value={newUser.dateOfBirth} onChange={handleNewUserChange} />
+                <Label>Role:</Label>
+                <Select name="role" value={newUser.role} onChange={handleNewUserChange}>
+                  <option value="Admin">Admin</option>
+                  <option value="Employee">Employee</option>
+                </Select>
+                <ModalButton onClick={handleAddUser}>Add User</ModalButton>
               </div>
             </UserDetails>
           </ModalContent>
