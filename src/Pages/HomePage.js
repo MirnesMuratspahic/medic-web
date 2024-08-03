@@ -88,7 +88,7 @@ const AddButton = styled.button`
   color: white;
   border: none;
   border-radius: 5px;
-  padding: 15px 25px;
+  padding: 10px 20px;
   cursor: pointer;
   font-size: 16px;
   font-weight: bold;
@@ -102,6 +102,7 @@ const AddButton = styled.button`
 
 const LogoutButton = styled.button`
   background-color: red;
+  margin-left: 20px;
   color: white;
   border: none;
   border-radius: 5px;
@@ -200,6 +201,21 @@ const ModalButton = styled.button`
 
   &:hover {
     background-color: darkgreen;
+  }
+`;
+
+const BlockButton = styled.button`
+  margin-top: 20px;
+  margin-left: 20px;
+  padding: 10px 20px;
+  border: none;
+  background-color: red;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+
+  &:hover {
+    background-color: darkred;
   }
 `;
 
@@ -389,6 +405,34 @@ function Home() {
     }
   };
 
+  const handleBlockUser = async () => {
+    if (!selectedUser) return;
+  
+    const token = localStorage.getItem('authToken');
+  
+    try {
+      const response = await fetch(`https://localhost:7265/users/block/${selectedUser.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+  
+      if (response.ok) {
+        alert('User has been blocked successfully');
+        handleCloseModal();
+        setUsers(users.filter(user => user.id !== selectedUser.id));
+      } else {
+        const errorText = await response.text();
+        alert(errorText);
+      }
+    } catch (error) {
+      console.error('There was a problem with the fetch operation:', error);
+      setError(`There was a problem with the fetch operation: ${error.message}`);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('authToken');
     navigate('/Pages/LogIn');
@@ -442,6 +486,7 @@ function Home() {
                 <Label>Last Login:</Label>
                 <Input name="lastLoginDate" type="date" value={selectedUser.lastLoginDate ? formatDate(selectedUser.lastLoginDate) : ''} onChange={handleInputChange}  readOnly/>
                 <ModalButton onClick={handleSave}>Save Changes</ModalButton>
+                <BlockButton onClick={handleBlockUser}>Block User</BlockButton>
               </div>
             </UserDetails>
           </ModalContent>
